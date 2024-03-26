@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(r6)
+project(odrive_hardware_interface)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -12,14 +12,37 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -Wno-implicit-fallthrough)
 endif()
 
 # find dependencies
-find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+
+include(FindPkgConfig)
+pkg_search_module(LIBUSB1 REQUIRED libusb-1.0)
+
+if(LIBUSB1_FOUND)
+  include_directories(SYSTEM ${LIBUSB1_INCLUDE_DIRS})
+else()
+  message( FATAL_ERROR "Failed to find libusb-1.0" )
+endif()
+
+ament_auto_add_library(
+  odrive_usb SHARED
+  src/odrive_usb.cpp
+)
+target_link_libraries(
+  odrive_usb
+  ${LIBUSB1_LIBRARIES}
+)
+
+ament_auto_add_library(
+  ${PROJECT_NAME} SHARED
+  src/odrive_hardware_interface.cpp
+)
+
+pluginlib_export_plugin_description_file(hardware_interface odrive_hardware_interface.xml)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -32,9 +55,4 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(
-  DIRECTORY config description launch worlds
-  DESTINATION share/${PROJECT_NAME}
-)
-
-ament_package()
+ament_auto_package()
